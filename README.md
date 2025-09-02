@@ -24,8 +24,8 @@ The application aims to:
 1. **Clone the repository**:
 
    ```bash
-   git clone git@gitlab-edu.supsi.ch:dti-isin/giuliano.gremlich/opzione-blockchain-engineering/24-25/progetti-studenti/celli-eltaher.git
-   cd celli-eltaher
+   git clone g[it@gitlab-edu.supsi.ch:dti-isin/giuliano.gremlich/opzione-blockchain-engineering/24-25/progetti-studenti/celli-eltaher.git](https://github.com/adelitoo/Blockchain-ticketing-system.git)
+   cd Blockchain-ticketing-system
    ```
 
 2. **Install dependencies**:
