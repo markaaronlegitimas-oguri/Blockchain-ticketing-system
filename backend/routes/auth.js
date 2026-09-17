@@ -56,11 +56,15 @@ router.post('/login', async (req, res) => {
 
     if (error) return res.status(401).json({ error: 'Invalid email or password.' });
 
-    const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('id, full_name, email, role')
       .eq('id', data.user.id)
       .single();
+
+    console.log('DEBUG login - user id:', data.user.id);
+    console.log('DEBUG login - profile:', profile);
+    console.log('DEBUG login - profileError:', profileError);
 
     return res.json({
       user: profile,
