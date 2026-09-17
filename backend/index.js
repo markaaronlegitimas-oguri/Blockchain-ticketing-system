@@ -4,6 +4,7 @@ require('dotenv').config();
 const contract = require('./contracts');
 const supabase = require('./supabaseClient');
 const authRoutes = require('./routes/auth');
+const slotRoutes = require('./routes/slots');
 const { requireAuth, requireRole } = require('./middleware/auth');
 
 const app = express();
@@ -12,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api', slotRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Blockchain Ticketing System API is running!' });
