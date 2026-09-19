@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { ethers } from 'ethers';
 import EventTicketABI from '../utils/EventTicket.json';
+import { useAuth } from './AuthContext';
 
 // Add ethereum to window object type
 declare global {
@@ -47,6 +48,8 @@ export const AccountProvider: React.FC<AccountProviderProps> = ({ children, cont
   const [balance, setBalance] = useState<string>('0');
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [chainId, setChainId] = useState<string | null>(null);
+  const { accessToken } = useAuth();
+  const linkedRef = useRef<string | null>(null);
 
   const setupContractAndOwner = async (
       newProvider: ethers.providers.Web3Provider,
@@ -172,6 +175,32 @@ export const AccountProvider: React.FC<AccountProviderProps> = ({ children, cont
       }
     };
   }, [contractAddress]);
+
+    // Link the connected wallet to the logged-in user (backend: /auth/link-wallet)
+  useEffect(() => {
+    if (!account || !accessToken) return;
+
+    const key = `${account}:${accessToken}`;
+    if (linkedRef.current === key) return;
+    linkedRef.current = key;
+
+    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    fetch(`${API}/auth/link-wallet`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ walletAddress: account }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.warn('link-wallet failed', res.status, body);
+        }
+      })
+      .catch((err) => console.error('link-wallet error', err));
+  }, [account, accessToken]);
 
   return (
       <AccountContext.Provider

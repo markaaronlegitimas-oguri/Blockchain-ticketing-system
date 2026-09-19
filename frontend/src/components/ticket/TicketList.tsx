@@ -1,14 +1,7 @@
 import React from 'react';
-import { Grid, Box, Skeleton } from '@mui/material';
-import { Grow } from '@mui/material';
+import { Grid, Box, Skeleton, Grow } from '@mui/material';
 import TicketCard from './TicketCard';
-
-interface Ticket {
-  id: number;
-  eventName: string;
-  date: number;
-  valid: boolean;
-}
+import { Ticket, TicketStatus } from '../../utils/ticketTypes';
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -29,33 +22,33 @@ const TicketList: React.FC<TicketListProps> = ({ tickets, loading, onTransferCli
 
   return (
     <Grid container spacing={3}>
-      {tickets.map((ticket, index) => (
-        <Grow in={true} timeout={(index + 1) * 200} key={ticket.id}>
-          <Box
-            onClick={() => {
-              if (ticket.valid) {
-                onTransferClick(ticket.id);
-              }
-            }}
-            sx={{
-              cursor: ticket.valid ? 'pointer' : 'default',
-              '&:hover': {
-                '& .MuiCard-root': {
-                  transform: ticket.valid ? 'translateY(-8px)' : 'none',
-                  boxShadow: ticket.valid ? 8 : 3,
+      {tickets.map((ticket, index) => {
+        const isActive = ticket.status === TicketStatus.Sold;
+        return (
+          <Grow in={true} timeout={(index + 1) * 200} key={ticket.id}>
+            <Box
+              onClick={() => {
+                if (isActive) {
+                  onTransferClick(ticket.id);
                 }
-              }
-            }}
-          >
-            <TicketCard
-              ticket={ticket}
-              onTransferClick={onTransferClick}
-            />
-          </Box>
-        </Grow>
-      ))}
+              }}
+              sx={{
+                cursor: isActive ? 'pointer' : 'default',
+                '&:hover': {
+                  '& .MuiCard-root': {
+                    transform: isActive ? 'translateY(-8px)' : 'none',
+                    boxShadow: isActive ? 8 : 3,
+                  },
+                },
+              }}
+            >
+              <TicketCard ticket={ticket} onTransferClick={onTransferClick} />
+            </Box>
+          </Grow>
+        );
+      })}
     </Grid>
   );
 };
 
-export default TicketList; 
+export default TicketList;

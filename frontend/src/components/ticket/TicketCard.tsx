@@ -1,38 +1,39 @@
 import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  Button, 
-  Box, 
-  Chip, 
-  Divider 
-} from '@mui/material';
-import { 
+import { Card, CardContent, Typography, Button, Box, Chip, Divider } from '@mui/material';
+import {
   CalendarToday as CalendarIcon,
   ConfirmationNumber as TicketIcon,
   SwapHoriz as TransferIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import { Ticket, TicketStatus } from '../../utils/ticketTypes';
 
 interface TicketCardProps {
-  ticket: {
-    id: number;
-    eventName: string;
-    date: number;
-    valid: boolean;
-    isCancelled?: boolean;
-  };
+  ticket: Ticket;
   onTransferClick: (ticketId: number) => void;
 }
 
+const STATUS_LABEL: Record<number, string> = {
+  [TicketStatus.Unsold]: 'Unsold',
+  [TicketStatus.Sold]: 'Valid',
+  [TicketStatus.Used]: 'Used',
+  [TicketStatus.Cancelled]: 'Cancelled',
+  [TicketStatus.Refunded]: 'Refunded',
+};
+
 const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
   const theme = useTheme();
-  const eventDate = new Date(ticket.date * 1000);
-  const isPastEvent = new Date() > eventDate;
-  const isUsed = !ticket.valid && isPastEvent;
-  const isInvalid = !ticket.valid && !isPastEvent;
+  const isActive = ticket.status === TicketStatus.Sold;
+  const label = STATUS_LABEL[ticket.status] ?? 'Unknown';
+  const chipColor: 'success' | 'default' | 'error' | 'warning' =
+    ticket.status === TicketStatus.Sold
+      ? 'success'
+      : ticket.status === TicketStatus.Used
+      ? 'default'
+      : ticket.status === TicketStatus.Refunded
+      ? 'warning'
+      : 'error';
 
   return (
     <Card
@@ -40,24 +41,24 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        opacity: ticket.valid ? 1 : 0.7,
+        opacity: isActive ? 1 : 0.7,
         transition: 'all 0.3s ease',
         '&:hover': {
-          transform: ticket.valid ? 'translateY(-8px)' : 'none',
-          boxShadow: ticket.valid ? 8 : 3,
-        }
+          transform: isActive ? 'translateY(-8px)' : 'none',
+          boxShadow: isActive ? 8 : 3,
+        },
       }}
     >
       <Box
         sx={{
           height: 4,
-          background: ticket.valid
+          background: isActive
             ? `linear-gradient(to right, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
-            : isUsed 
-              ? theme.palette.grey[400]
-              : theme.palette.error.main,
+            : ticket.status === TicketStatus.Used
+            ? theme.palette.grey[400]
+            : theme.palette.error.main,
           borderTopLeftRadius: theme.shape.borderRadius,
-          borderTopRightRadius: theme.shape.borderRadius
+          borderTopRightRadius: theme.shape.borderRadius,
         }}
       />
       <CardContent>
@@ -72,48 +73,31 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
               textOverflow: 'ellipsis',
               display: '-webkit-box',
               WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical'
+              WebkitBoxOrient: 'vertical',
             }}
           >
-            {ticket.eventName}
+            {ticket.eventName ?? `Ticket #${ticket.id}`}
           </Typography>
-          <Chip
-            label={ticket.valid ? "Valid" : isUsed ? "Used" : "Invalid"}
-            color={ticket.valid ? "success" : isUsed ? "default" : "error"}
-            size="small"
-            sx={{ flexShrink: 0 }}
-          />
+          <Chip label={label} color={chipColor} size="small" sx={{ flexShrink: 0 }} />
         </Box>
 
         <Box>
-          <Box display="flex" alignItems="center" mb={1.5}>
-            <CalendarIcon
-              fontSize="small"
-              sx={{ mr: 1.5, color: theme.palette.primary.main }}
-            />
-            <Typography variant="body2">
-              {eventDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long'
-              })} at {eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-            </Typography>
-          </Box>
+          {ticket.sessionDate && (
+            <Box display="flex" alignItems="center" mb={1.5}>
+              <CalendarIcon fontSize="small" sx={{ mr: 1.5, color: theme.palette.primary.main }} />
+              <Typography variant="body2">{ticket.sessionDate}</Typography>
+            </Box>
+          )}
 
           <Box display="flex" alignItems="center" mb={1.5}>
-            <TicketIcon
-              fontSize="small"
-              sx={{ mr: 1.5, color: theme.palette.primary.main }}
-            />
-            <Typography variant="body2">
-              Seat: {ticket.id}
-            </Typography>
+            <TicketIcon fontSize="small" sx={{ mr: 1.5, color: theme.palette.primary.main }} />
+            <Typography variant="body2">Ticket ID: {ticket.id}</Typography>
           </Box>
         </Box>
 
         <Box sx={{ mt: 2 }}>
           <Divider sx={{ mb: 2 }} />
-          {ticket.valid ? (
+          {isActive ? (
             <Button
               fullWidth
               variant="contained"
@@ -126,23 +110,14 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
                 background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                 '&:hover': {
                   background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                }
+                },
               }}
             >
               Transfer
             </Button>
           ) : (
-            <Button
-              fullWidth
-              variant="outlined"
-              disabled
-              startIcon={<CancelIcon />}
-              sx={{
-                color: isUsed ? theme.palette.text.secondary : theme.palette.error.main,
-                borderColor: isUsed ? theme.palette.divider : theme.palette.error.main
-              }}
-            >
-              {isUsed ? "Used" : "Invalid"}
+            <Button fullWidth variant="outlined" disabled startIcon={<CancelIcon />}>
+              {label}
             </Button>
           )}
         </Box>
@@ -151,4 +126,4 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
   );
 };
 
-export default TicketCard; 
+export default TicketCard;

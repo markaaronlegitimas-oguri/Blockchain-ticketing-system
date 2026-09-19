@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box } from '@mui/material';
 import { useAccount } from '../../contexts/AccountContext';
 import ConnectWalletMessage from '../ConnectWalletMessage';
@@ -6,15 +6,7 @@ import TicketListHeader from './TicketListHeader';
 import TicketList from './TicketList';
 import NoTicketsMessage from './NoTicketsMessage';
 import TransferDialog from './TransferDialog';
-
-interface Ticket {
-  id: number;
-  eventId: number;
-  eventName: string;
-  date: number;
-  valid: boolean;
-  isCancelled: boolean;
-}
+import { Ticket, TicketStatus } from '../../utils/ticketTypes';
 
 const MyTickets: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -23,96 +15,64 @@ const MyTickets: React.FC = () => {
   const [transferAddress, setTransferAddress] = useState<string>('');
   const [transferTicketId, setTransferTicketId] = useState<number | null>(null);
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     if (!contract || !account) return;
 
     try {
       setLoading(true);
 
-      const userTicketsArray = await contract.getUserTickets(account);
+      const ids = await contract.getTicketsOwnedBy(account);
 
-      if (userTicketsArray.length === 0) {
-        setTickets([]);
-        setLoading(false);
-        return;
-      }
+      const results: Ticket[] = await Promise.all(
+        ids.map(async (rawId: any) => {
+          const id = Number(rawId.toString());
+          const t = await contract.getTicket(id);
+          console.debug('getTicket', id, t); // remove once verified
+          return { id, status: Number(t.status) as TicketStatus };
+        })
+      );
 
-      const ticketPromises = [];
-      const eventInfoPromises = [];
-
-      for (let i = 0; i < userTicketsArray.length; i++) {
-        const ticketId = userTicketsArray[i].toNumber();
-        ticketPromises.push(contract.tickets(ticketId));
-      }
-
-      const ticketResults = await Promise.all(ticketPromises);
-
-      for (let i = 0; i < ticketResults.length; i++) {
-        const eventId = ticketResults[i].eventId.toNumber();
-        eventInfoPromises.push(contract.events(eventId));
-      }
-
-      const eventResults = await Promise.all(eventInfoPromises);
-
-      const formattedTickets = ticketResults.map((ticket, index) => {
-        const eventId = ticket.eventId.toNumber();
-        const eventInfo = eventResults[index];
-        const eventDate = new Date(eventInfo.date.toNumber() * 1000);
-        const isPastEvent = new Date() > eventDate;
-        const isTicketValid = ticket.valid && !isPastEvent;
-
-        return {
-          id: userTicketsArray[index].toNumber(),
-          eventId,
-          eventName: eventInfo.name,
-          date: eventInfo.date.toNumber(),
-          valid: isTicketValid,
-          isCancelled: !eventInfo.active
-        };
-      });
-
-      setTickets(formattedTickets);
+      setTickets(results);
     } catch (error) {
-      console.error("Error fetching tickets:", error);
+      console.error('Error fetching tickets:', error);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract, account]);
 
   const handleTransferTicket = async () => {
     if (!contract || !transferAddress || transferTicketId === null) return;
 
     try {
-      // Check if the address is valid
       if (!transferAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-        alert("Invalid Ethereum address");
+        alert('Invalid Ethereum address');
         return;
       }
 
-      // Check if the ticket is still valid
-      const ticket = tickets.find(t => t.id === transferTicketId);
-      if (!ticket?.valid) {
-        alert("This ticket is no longer valid for transfer");
+      const ticket = tickets.find((t) => t.id === transferTicketId);
+      if (ticket?.status !== TicketStatus.Sold) {
+        alert('Only unused, active tickets can be transferred');
         return;
       }
 
       const tx = await contract.transferTicket(transferTicketId, transferAddress);
       await tx.wait();
 
-      alert("Ticket transferred successfully!");
+      alert('Ticket transferred successfully!');
       setTransferTicketId(null);
       setTransferAddress('');
       fetchTickets();
     } catch (error: any) {
-      console.error("Error transferring ticket:", error);
-      alert(`Error: ${error.message || "Unknown error"}`);
+      console.error('Error transferring ticket:', error);
+      alert(`Error: ${error.reason || error.message || 'Unknown error'}`);
     }
   };
 
   const handleTransferClick = (ticketId: number) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (!ticket?.valid) {
-      alert("This ticket is no longer valid for transfer");
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (ticket?.status !== TicketStatus.Sold) {
+      alert('Only unused, active tickets can be transferred');
       return;
     }
     setTransferTicketId(ticketId);
@@ -124,18 +84,19 @@ const MyTickets: React.FC = () => {
   };
 
   useEffect(() => {
-    if (contract && account) {
-      fetchTickets();
+    if (!contract || !account) return;
 
-      // Listen for transfer events
+    fetchTickets();
+
+    // Refresh when a transfer happens (only if the contract has this event)
+    if (contract.filters?.TicketTransferred) {
       const transferFilter = contract.filters.TicketTransferred();
       contract.on(transferFilter, fetchTickets);
-
       return () => {
         contract.off(transferFilter, fetchTickets);
       };
     }
-  }, [contract, account]);
+  }, [contract, account, fetchTickets]);
 
   if (!isConnected) {
     return <ConnectWalletMessage onConnect={connectWallet} />;
@@ -146,23 +107,15 @@ const MyTickets: React.FC = () => {
       <TicketListHeader />
 
       {loading ? (
-        <TicketList 
-          tickets={[]} 
-          loading={true} 
-          onTransferClick={handleTransferClick} 
-        />
+        <TicketList tickets={[]} loading={true} onTransferClick={handleTransferClick} />
       ) : tickets.length === 0 ? (
         <NoTicketsMessage />
       ) : (
-        <TicketList 
-          tickets={tickets} 
-          loading={false} 
-          onTransferClick={handleTransferClick} 
-        />
+        <TicketList tickets={tickets} loading={false} onTransferClick={handleTransferClick} />
       )}
 
       <TransferDialog
-        open={transferTicketId !== null} 
+        open={transferTicketId !== null}
         onClose={handleTransferClose}
         onTransfer={handleTransferTicket}
         transferAddress={transferAddress}
