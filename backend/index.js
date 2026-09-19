@@ -5,6 +5,8 @@ const contract = require('./contracts');
 const supabase = require('./supabaseClient');
 const authRoutes = require('./routes/auth');
 const slotRoutes = require('./routes/slots');
+const eventRoutes = require('./routes/events');
+const ticketRoutes = require('./routes/tickets');
 const { requireAuth, requireRole } = require('./middleware/auth');
 
 const app = express();
@@ -13,6 +15,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/tickets', ticketRoutes);
 app.use('/api', slotRoutes);
 
 app.get('/', (req, res) => {
@@ -33,51 +37,6 @@ app.get('/api/test-supabase', async (req, res) => {
   const { data, error } = await supabase.from('events').select('*').limit(5);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: 'Supabase connected!', events: data });
-});
-
-// Verify a completed on-chain purchase, then record it off-chain
-app.post('/api/tickets/verify-purchase', async (req, res) => {
-  const { ticketId, txHash, eventId, ownerId } = req.body;
-
-  if (ticketId === undefined || !txHash || !eventId || !ownerId) {
-    return res.status(400).json({ error: 'ticketId, txHash, eventId, and ownerId are required' });
-  }
-
-  try {
-    // 1. Confirm the transaction actually succeeded on-chain
-    const receipt = await contract.runner.provider.getTransactionReceipt(txHash);
-    if (!receipt || receipt.status !== 1) {
-      return res.status(400).json({ error: 'Transaction not found or failed' });
-    }
-
-    // 2. Read the ticket's current state directly from the contract
-    const onchainTicket = await contract.tickets(ticketId);
-    if (onchainTicket.status !== 1n) { // adjust if TicketStatus.Sold isn't enum value 1
-      return res.status(400).json({ error: 'Ticket is not marked Sold on-chain' });
-    }
-
-    // 3. Generate QR payload and write the off-chain reference
-    const qrCode = `TICKET-${ticketId}-${ownerId}-${Date.now()}`;
-
-    const { data, error } = await supabase
-      .from('tickets')
-      .insert({
-        event_id: eventId,
-        owner_id: ownerId,
-        onchain_ticket_id: ticketId,
-        status: 'sold',
-        qr_code: qrCode,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json({ message: 'Purchase verified and recorded!', ticket: data });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Organizer/admin only: issue tickets on-chain for an event

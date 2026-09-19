@@ -71,17 +71,16 @@ export const AccountProvider: React.FC<AccountProviderProps> = ({ children, cont
         return null;
       }
 
-      // Get contract owner for comparison
-      let contractOwner;
+            // Organizer (contract deployer) is used to decide the Owner/Customer chip
+      let organizer: string | null = null;
       try {
-        contractOwner = await newContract.owner();
+        organizer = await newContract.organizer();
       } catch (error) {
-        console.error("Error getting contract owner:", error);
-        return null;
+        console.error("Error getting organizer:", error);
       }
 
       setContract(newContract);
-      setIsOwner(contractOwner.toLowerCase() === address.toLowerCase());
+      setIsOwner(!!organizer && organizer.toLowerCase() === address.toLowerCase());
 
       return newContract;
     } catch (error) {
