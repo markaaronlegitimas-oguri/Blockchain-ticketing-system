@@ -3,6 +3,7 @@ import Header from './components/header/Header';
 import EventsPage from './components/event/EventsPage';
 import MyTickets from './components/ticket/MyTickets';
 import { AccountProvider } from './contexts/AccountContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CONTRACT_ADDRESS } from './config';
 import { Container, Box, Typography, Tabs, Tab, Paper } from '@mui/material';
@@ -17,7 +18,8 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <AccountProvider contractAddress={CONTRACT_ADDRESS}>
+          <AuthProvider>
+          <AccountProvider contractAddress={CONTRACT_ADDRESS}>
         <Box
           sx={{
             minHeight: '100vh',
@@ -155,7 +157,8 @@ const App: React.FC = () => {
             </Typography>
           </Box>
         </Box>
-      </AccountProvider>
+            </AccountProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 };

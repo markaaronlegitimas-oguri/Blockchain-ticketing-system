@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ethers } from 'ethers';
-import TheaterManagerABI from '../utils/TheaterManagerABI.json';
+import EventTicketABI from '../utils/EventTicket.json';
 
 // Add ethereum to window object type
 declare global {
@@ -57,7 +57,7 @@ export const AccountProvider: React.FC<AccountProviderProps> = ({ children, cont
       // Create contract with proper error handling
       const newContract = new ethers.Contract(
           contractAddress,
-          TheaterManagerABI,
+          EventTicketABI,
           newSigner
       );
 

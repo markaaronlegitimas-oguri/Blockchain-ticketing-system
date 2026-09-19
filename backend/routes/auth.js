@@ -82,6 +82,45 @@ router.get('/me', requireAuth, async (req, res) => {
   return res.json({ user: req.user });
 });
 
+// POST /api/auth/link-wallet
+// Links the logged-in user's Supabase account to their MetaMask address.
+// Call this right after connectWallet() succeeds on the frontend.
+router.post('/link-wallet', requireAuth, async (req, res) => {
+  const { walletAddress } = req.body;
+
+  if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+    return res.status(400).json({ error: 'A valid walletAddress is required.' });
+  }
+
+  try {
+    const { data: existing, error: existingError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('wallet_address', walletAddress.toLowerCase())
+      .neq('id', req.user.id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existing) {
+      return res.status(409).json({ error: 'This wallet is already linked to another account.' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ wallet_address: walletAddress.toLowerCase() })
+      .eq('id', req.user.id)
+      .select('id, full_name, email, role, wallet_address')
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ message: 'Wallet linked successfully.', user: data });
+  } catch (err) {
+    console.error('[auth/link-wallet]', err.message);
+    return res.status(500).json({ error: 'Could not link wallet.' });
+  }
+});
+
 // PATCH /api/auth/users/:id/role  — admin-only
 router.patch('/users/:id/role', requireAuth, requireRole('admin'), async (req, res) => {
   const { role } = req.body;

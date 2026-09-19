@@ -1,1 +1,3 @@
 backend/test-endpoints.sh
+node_modules
+frontend/.env

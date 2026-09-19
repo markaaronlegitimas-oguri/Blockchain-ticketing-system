@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar, useTheme } from '@mui/material';
 import { useAccount } from '../../contexts/AccountContext';
+import { useAuth } from '../../contexts/AuthContext';
+import LoginRegisterModal from '../LoginRegisterModal';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import TheaterComedyIcon from '@mui/icons-material/TheaterComedy';
@@ -9,6 +11,8 @@ import ThemeToggleButton from './ThemeToggleButton';
 const Header: React.FC = () => {
   const { account, balance, isOwner, connectWallet, isConnected } = useAccount();
   const theme = useTheme();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   return (
     <AppBar 
@@ -162,9 +166,40 @@ const Header: React.FC = () => {
               Connect Wallet
             </Button>
           )}
+                    {isAuthenticated ? (
+            <>
+              <Chip
+                label={user?.email ?? 'Logged in'}
+                size="small"
+                variant="outlined"
+                sx={{ fontWeight: 'bold', borderRadius: 2 }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={logout}
+                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setAuthModalOpen(true)}
+              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+            >
+              Login / Register
+            </Button>
+          )}
           <ThemeToggleButton />
         </Box>
       </Toolbar>
+      <LoginRegisterModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </AppBar>
   );
 };
