@@ -157,4 +157,84 @@ router.post('/verify-purchase', requireAuth, async (req, res) => {
   }
 });
 
+router.post('/sync-transfer', requireAuth, async (req, res) => {
+  try {
+    const { txHash } = req.body || {};
+    if (!/^0x[0-9a-fA-F]{64}$/.test(txHash || '')) {
+      return res.status(400).json({ error: 'A valid txHash is required' });
+    }
+
+    const receipt = await provider.getTransactionReceipt(txHash);
+    if (!receipt) {
+      return res.status(404).json({ error: 'Transaction not found yet, retry in a few seconds' });
+    }
+    if (receipt.status !== 1) {
+      return res.status(400).json({ error: 'Transaction failed on-chain' });
+    }
+
+    let parsed = null;
+    for (const log of receipt.logs) {
+      if (log.address.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
+      try {
+        const p = iface.parseLog({ topics: [...log.topics], data: log.data });
+        if (p && p.name === 'TicketTransferred') { parsed = p; break; }
+      } catch (_) {}
+    }
+    if (!parsed) {
+      return res.status(400).json({ error: 'No TicketTransferred event found' });
+    }
+
+    const pick = (name, idx) => {
+      try { return parsed.args.getValue(name); } catch (_) { return parsed.args[idx]; }
+    };
+    const onchainTicketId = pick('ticketId', 0).toString();
+    const newOwnerWallet = pick('to', 2);
+
+    const { data: ev } = await supabase
+      .from('events').select('id')
+      .ilike('contract_address', CONTRACT_ADDRESS).maybeSingle();
+    if (!ev) {
+      return res.status(500).json({ error: 'events.contract_address is not set' });
+    }
+
+    const { data: ticket } = await supabase
+      .from('tickets').select('id, owner_id, last_transfer_block')
+      .eq('event_id', ev.id).eq('onchain_ticket_id', onchainTicketId).maybeSingle();
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found in database' });
+    }
+
+    if (ticket.last_transfer_block && receipt.blockNumber <= Number(ticket.last_transfer_block)) {
+      return res.json({ synced: true, note: 'Already up to date' });
+    }
+
+    const { data: newUser } = await supabase
+      .from('users').select('id')
+      .ilike('wallet_address', newOwnerWallet).maybeSingle();
+    if (!newUser) {
+      return res.status(202).json({
+        synced: false,
+        reason: 'Recipient wallet is not linked to an account yet.',
+      });
+    }
+
+    const newQr = `TICKET-${onchainTicketId}-${newUser.id}-${Date.now()}`;
+    const { error: updErr } = await supabase
+      .from('tickets')
+      .update({
+        owner_id: newUser.id,
+        qr_code: newQr,
+        last_transfer_tx: txHash,
+        last_transfer_block: receipt.blockNumber,
+      })
+      .eq('id', ticket.id);
+    if (updErr) throw updErr;
+
+    return res.json({ synced: true, ticketId: ticket.id, newOwnerId: newUser.id });
+  } catch (err) {
+    console.error('sync-transfer error:', err);
+    return res.status(500).json({ error: 'Failed to sync transfer' });
+  }
+});
+
 module.exports = router;    

@@ -1,6 +1,8 @@
+import { syncTransfer } from '../../utils/syncTransfer';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box } from '@mui/material';
 import { useAccount } from '../../contexts/AccountContext';
+import { useAuth } from '../../contexts/AuthContext';
 import ConnectWalletMessage from '../ConnectWalletMessage';
 import TicketListHeader from './TicketListHeader';
 import TicketList from './TicketList';
@@ -12,6 +14,7 @@ const MyTickets: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { contract, account, isConnected, connectWallet } = useAccount();
+  const { accessToken } = useAuth();
   const [transferAddress, setTransferAddress] = useState<string>('');
   const [transferTicketId, setTransferTicketId] = useState<number | null>(null);
 
@@ -59,7 +62,18 @@ const MyTickets: React.FC = () => {
       const tx = await contract.transferTicket(transferTicketId, transferAddress);
       await tx.wait();
 
-      alert('Ticket transferred successfully!');
+   try {
+     if (accessToken) {
+       await syncTransfer(tx.hash, accessToken);
+     } else {
+       console.warn('Not logged in, skipped ownership sync');
+     }
+   } catch (e) {
+     console.warn('Ownership sync failed:', e);
+   }
+
+alert('Ticket transferred successfully!');
+      
       setTransferTicketId(null);
       setTransferAddress('');
       fetchTickets();
