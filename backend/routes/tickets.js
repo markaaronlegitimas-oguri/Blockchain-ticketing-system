@@ -237,4 +237,34 @@ router.post('/sync-transfer', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/tickets/my-tickets
+// Returns event name + session date for each ticket the logged-in user owns in Supabase,
+// keyed by onchain_ticket_id so the frontend can merge it with contract data.
+router.get('/my-tickets', requireAuth, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select(`
+        onchain_ticket_id,
+        sessions ( session_name, starts_at, events ( name ) )
+      `)
+      .eq('owner_id', userId);
+
+    if (error) throw error;
+
+    const tickets = (data || []).map((row) => ({
+      onchainTicketId: row.onchain_ticket_id,
+      eventName: row.sessions?.events?.name ?? null,
+      sessionDate: row.sessions?.starts_at ?? null,
+    }));
+
+    res.json({ tickets });
+  } catch (error) {
+    console.error('[GET /my-tickets]', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;    

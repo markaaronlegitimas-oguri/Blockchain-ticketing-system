@@ -27,22 +27,49 @@ const MyTickets: React.FC = () => {
       const ids = await contract.getTicketsOwnedBy(account);
 
       const results: Ticket[] = await Promise.all(
-        ids.map(async (rawId: any) => {
-          const id = Number(rawId.toString());
-          const t = await contract.getTicket(id);
-          console.debug('getTicket', id, t); // remove once verified
-          return { id, status: Number(t.status) as TicketStatus };
-        })
-      );
+  ids.map(async (rawId: any): Promise<Ticket> => {
+    const id = Number(rawId.toString());
+    const t = await contract.getTicket(id);
+    return { id, status: Number(t.status) as TicketStatus };
+  })
+);
 
-      setTickets(results);
+      // Pull event name / session date from Supabase and merge in by id.
+      // If this fails or the user isn't logged in, tickets still show fine without it.
+            if (accessToken) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tickets/my-tickets`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (res.ok) {
+            const { tickets: details } = await res.json();
+            const byId = new Map<number, { eventName: string | null; sessionDate: string | null }>(
+              details.map((d: any) => [d.onchainTicketId, d])
+            );
+            for (let i = 0; i < results.length; i++) {
+              const detail = byId.get(results[i].id);
+              if (detail) {
+                results[i] = {
+                  ...results[i],
+                  eventName: detail.eventName ?? undefined,
+                  sessionDate: detail.sessionDate
+                    ? new Date(detail.sessionDate).toLocaleString()
+                    : undefined,
+                };
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Could not load event details for tickets:', e);
+        }
+      }
     } catch (error) {
       console.error('Error fetching tickets:', error);
       setTickets([]);
     } finally {
       setLoading(false);
     }
-  }, [contract, account]);
+  }, [contract, account, accessToken]);
 
   const handleTransferTicket = async () => {
     if (!contract || !transferAddress || transferTicketId === null) return;
@@ -62,18 +89,18 @@ const MyTickets: React.FC = () => {
       const tx = await contract.transferTicket(transferTicketId, transferAddress);
       await tx.wait();
 
-   try {
-     if (accessToken) {
-       await syncTransfer(tx.hash, accessToken);
-     } else {
-       console.warn('Not logged in, skipped ownership sync');
-     }
-   } catch (e) {
-     console.warn('Ownership sync failed:', e);
-   }
+      try {
+        if (accessToken) {
+          await syncTransfer(tx.hash, accessToken);
+        } else {
+          console.warn('Not logged in, skipped ownership sync');
+        }
+      } catch (e) {
+        console.warn('Ownership sync failed:', e);
+      }
 
-alert('Ticket transferred successfully!');
-      
+      alert('Ticket transferred successfully!');
+
       setTransferTicketId(null);
       setTransferAddress('');
       fetchTickets();
