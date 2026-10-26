@@ -55,10 +55,10 @@ const App: React.FC = () => {
                   mb: 2,
                 }}
               >
-                Welcome to TheaterChain
+                Welcome to Progressive Music Philippines
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Your destination for decentralized theater tickets. Secure, transparent, and unforgettable.
+                Your destination for blockchain-secured music event tickets. Secure, transparent, and unforgettable.
               </Typography>
             </Box>
 
@@ -153,7 +153,7 @@ const App: React.FC = () => {
             }}
           >
             <Typography variant="body2" color="text.secondary">
-              © {new Date().getFullYear()} TheaterChain. All rights reserved.
+              © {new Date().getFullYear()} Progressive Music Philippines. All rights reserved.
             </Typography>
           </Box>
         </Box>

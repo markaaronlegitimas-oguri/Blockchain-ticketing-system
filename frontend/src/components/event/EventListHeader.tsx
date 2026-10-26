@@ -27,7 +27,7 @@ const EventListHeader: React.FC<EventListHeaderProps> = ({ onNewEvent, isOwner }
           background: 'linear-gradient(to right, #f50057, #3f51b5)',
         }
       }}>
-        Theater Events
+        Music Events
       </Typography>
       {isOwner && (
         <Button

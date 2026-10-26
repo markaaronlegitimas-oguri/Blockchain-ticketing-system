@@ -27,7 +27,7 @@ const ConnectWalletMessage: React.FC<ConnectWalletMessageProps> = ({ onConnect }
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
       }}>
-        Explore Theater Events
+        Explore Music Events
       </Typography>
       <Typography variant="body1" color="text.secondary" mb={4} sx={{ maxWidth: 600 }}>
         Connect your wallet to browse available events and purchase tickets on the blockchain

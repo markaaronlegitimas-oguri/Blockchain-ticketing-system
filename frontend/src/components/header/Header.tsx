@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import LoginRegisterModal from '../LoginRegisterModal';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import TheaterComedyIcon from '@mui/icons-material/TheaterComedy';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ThemeToggleButton from './ThemeToggleButton';
 
 const Header: React.FC = () => {
@@ -29,7 +29,7 @@ const Header: React.FC = () => {
     >
       <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
         <Box display="flex" alignItems="center" gap={2}>
-          <TheaterComedyIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+          <MusicNoteIcon sx={{ fontSize: 32, color: 'primary.main' }} />
           <Typography 
             variant="h5" 
             sx={{ 
@@ -39,7 +39,7 @@ const Header: React.FC = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            TheaterChain
+            Progressive Music Philippines
           </Typography>
         </Box>
 
