@@ -63,6 +63,8 @@ const MyTickets: React.FC = () => {
           console.warn('Could not load event details for tickets:', e);
         }
       }
+
+      setTickets(results);
     } catch (error) {
       console.error('Error fetching tickets:', error);
       setTickets([]);
