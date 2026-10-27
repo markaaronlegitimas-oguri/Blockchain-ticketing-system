@@ -7,6 +7,8 @@ const authRoutes = require('./routes/auth');
 const slotRoutes = require('./routes/slots');
 const eventRoutes = require('./routes/events');
 const ticketRoutes = require('./routes/tickets');
+const dashboardRoutes = require('./routes/dashboard');
+const reportRoutes = require('./routes/reports');
 const { requireAuth, requireRole } = require('./middleware/auth');
 
 const app = express();
@@ -16,6 +18,8 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api', slotRoutes);
 
@@ -125,17 +129,29 @@ app.post('/api/tickets/check-in', requireAuth, requireRole('staff', 'admin'), as
       return res.status(409).json({ error: `Ticket is not valid for check-in (status: ${ticket.status})` });
     }
 
-    const { data: updated, error: updateError } = await supabase
+    // Only flip sold -> used. If two scans race, exactly one of them updates a row.
+    const { error: updateError, count } = await supabase
       .from('tickets')
-      .update({ status: 'used' })
+      .update({ status: 'used' }, { count: 'exact' })
       .eq('id', ticket.id)
-      .select()
-      .single();
+      .eq('status', 'sold');
 
     if (updateError) throw updateError;
+    if (!count) {
+      return res.status(409).json({ error: 'Ticket already checked in' });
+    }
+    const updated = { ...ticket, status: 'used' };
+
+    // Mirror the check-in on the blockchain (best effort, in the background so the gate scan stays fast)
+    contract
+      .validateTicket(updated.onchain_ticket_id)
+      .then((tx) => tx.wait())
+      .then(() => console.log(`Ticket ${updated.onchain_ticket_id} marked Used on-chain`))
+      .catch((err) => console.error('On-chain validateTicket failed:', err.reason || err.message));
 
     res.json({ message: 'Ticket checked in successfully!', ticket: updated });
   } catch (error) {
+    console.error('[POST /tickets/check-in]', error.message);
     res.status(500).json({ error: error.message });
   }
 });

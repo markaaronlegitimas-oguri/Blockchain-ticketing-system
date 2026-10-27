@@ -267,4 +267,29 @@ router.get('/my-tickets', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/tickets/my-tickets/:onchainTicketId/qr
+// Returns the entry QR (as an image) for a ticket the logged-in user owns.
+const QRCode = require('qrcode');
+router.get('/my-tickets/:onchainTicketId/qr', requireAuth, async (req, res) => {
+  try {
+    const { data: ticket, error } = await supabase
+      .from('tickets')
+      .select('qr_code, status')
+      .eq('onchain_ticket_id', req.params.onchainTicketId)
+      .eq('owner_id', req.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found for your account' });
+    }
+
+    const qrImage = await QRCode.toDataURL(ticket.qr_code, { width: 320, margin: 2 });
+    res.json({ qrImage, qrCode: ticket.qr_code, status: ticket.status });
+  } catch (error) {
+    console.error('[GET /my-tickets/:id/qr]', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;    

@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, Typography, Button, Box, Chip, Divider } from '@mui/material';
 import {
   CalendarToday as CalendarIcon,
   ConfirmationNumber as TicketIcon,
   SwapHoriz as TransferIcon,
   Cancel as CancelIcon,
+  QrCode2 as QrIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Ticket, TicketStatus } from '../../utils/ticketTypes';
+import TicketQrDialog from './TicketQrDialog';
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -24,6 +26,7 @@ const STATUS_LABEL: Record<number, string> = {
 
 const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
   const theme = useTheme();
+  const [qrOpen, setQrOpen] = useState(false);
   const isActive = ticket.status === TicketStatus.Sold;
   const label = STATUS_LABEL[ticket.status] ?? 'Unknown';
   const chipColor: 'success' | 'default' | 'error' | 'warning' =
@@ -98,6 +101,19 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
         <Box sx={{ mt: 2 }}>
           <Divider sx={{ mb: 2 }} />
           {isActive ? (
+            <>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<QrIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setQrOpen(true);
+              }}
+              sx={{ mb: 1 }}
+            >
+              Show QR
+            </Button>
             <Button
               fullWidth
               variant="contained"
@@ -115,6 +131,7 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
             >
               Transfer
             </Button>
+            </>
           ) : (
             <Button fullWidth variant="outlined" disabled startIcon={<CancelIcon />}>
               {label}
@@ -122,6 +139,12 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onTransferClick }) => {
           )}
         </Box>
       </CardContent>
+      <TicketQrDialog
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        ticketId={ticket.id}
+        eventName={ticket.eventName}
+      />
     </Card>
   );
 };
