@@ -243,7 +243,7 @@ const EventsPage: React.FC = () => {
                       <Box>
                         <Typography variant="body1">{slot.slot_name}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Price: {slot.price}
+                          Price: {slot.price} ETH
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
