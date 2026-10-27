@@ -7,6 +7,7 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ThemeToggleButton from './ThemeToggleButton';
+  import NotificationBell from '../notifications/NotificationBell';
 
 const Header: React.FC = () => {
   const { account, balance, isOwner, connectWallet, isConnected } = useAccount();
@@ -193,6 +194,7 @@ const Header: React.FC = () => {
               Login / Register
             </Button>
           )}
+                      {isAuthenticated && <NotificationBell />}
           <ThemeToggleButton />
         </Box>
       </Toolbar>

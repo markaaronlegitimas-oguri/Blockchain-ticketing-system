@@ -9,6 +9,9 @@ const eventRoutes = require('./routes/events');
 const ticketRoutes = require('./routes/tickets');
 const dashboardRoutes = require('./routes/dashboard');
 const reportRoutes = require('./routes/reports');
+const notificationRoutes = require('./routes/notifications');
+const { notify } = require('./notify');
+const { startReminderJob } = require('./reminders');
 const { requireAuth, requireRole } = require('./middleware/auth');
 
 const app = express();
@@ -20,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api', slotRoutes);
 
@@ -142,6 +146,13 @@ app.post('/api/tickets/check-in', requireAuth, requireRole('staff', 'admin'), as
     }
     const updated = { ...ticket, status: 'used' };
 
+    // Tell the ticket holder they were checked in (fire-and-forget, never blocks the scan)
+    notify(ticket.owner_id, {
+      type: 'check_in',
+      title: 'Checked in',
+      message: `Ticket #${ticket.onchain_ticket_id} was scanned at the gate. Enjoy the show!`,
+    });
+
     // Mirror the check-in on the blockchain (best effort, in the background so the gate scan stays fast)
     contract
       .validateTicket(updated.onchain_ticket_id)
@@ -158,4 +169,5 @@ app.post('/api/tickets/check-in', requireAuth, requireRole('staff', 'admin'), as
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startReminderJob();
 });

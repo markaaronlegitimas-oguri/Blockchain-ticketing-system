@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Box, Button, Chip, LinearProgress, Paper, Skeleton, Typography } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useAuth } from '../../contexts/AuthContext';
+  import AnnouncementButton from './AnnouncementButton';
+  
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const REFRESH_MS = 2000; // near real-time: refresh every 2 seconds
@@ -150,6 +152,7 @@ const DashboardPage: React.FC = () => {
           </Typography>
         )}
         <Box sx={{ ml: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <AnnouncementButton />
           <Button
             size="small"
             variant="outlined"

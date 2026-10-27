@@ -6,6 +6,7 @@ const { ethers } = require('ethers'); // backend uses ethers v6
 const supabase = require('../supabaseClient');
 const { requireAuth } = require('../middleware/auth');
 const contractArtifact = require('../EventTicket.json');
+const { notify } = require('../notify');
 
 const router = express.Router();
 
@@ -150,6 +151,13 @@ router.post('/verify-purchase', requireAuth, async (req, res) => {
       throw insertError;
     }
 
+        const { data: eventRow } = await supabase
+      .from('events').select('name').eq('id', session.event_id).maybeSingle();
+    notify(userId, {
+      type: 'ticket_confirmation',
+      title: 'Ticket confirmed',
+      message: `Your ticket #${onchainTicketId} for ${eventRow?.name ?? 'the event'} is confirmed. Open My Tickets to show your entry QR.`,
+    });
     res.status(201).json({ message: 'Purchase verified', ticket });
   } catch (error) {
     console.error('[POST /verify-purchase]', error.message);
@@ -230,6 +238,16 @@ router.post('/sync-transfer', requireAuth, async (req, res) => {
       .eq('id', ticket.id);
     if (updErr) throw updErr;
 
+        notify(newUser.id, {
+      type: 'transfer',
+      title: 'Ticket received',
+      message: `Ticket #${onchainTicketId} was transferred to you. It is now in My Tickets.`,
+    });
+    notify(ticket.owner_id, {
+      type: 'transfer',
+      title: 'Ticket transferred',
+      message: `Ticket #${onchainTicketId} was transferred to another account.`,
+    });
     return res.json({ synced: true, ticketId: ticket.id, newOwnerId: newUser.id });
   } catch (err) {
     console.error('sync-transfer error:', err);
